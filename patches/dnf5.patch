@@ -22,3 +22,25 @@ index 7e0a568..42a104c 100644
              } else {
                  throw libdnf5::cli::AbortedByUserError();
              }
+diff --git a/dnf5/main.cpp b/dnf5/main.cpp
+index f87d583..f846aa0 100644
+--- a/dnf5/main.cpp
++++ b/dnf5/main.cpp
+@@ -1603,10 +1603,17 @@ int main(int argc, char * argv[]) try {
+                         }
+                         is_bootc_system = libdnf5::utils::bootc::is_bootc_system();
+                         if (!*is_bootc_system) {
++#if !defined(__MVS__)
+                             throw libdnf5::cli::ReadOnlySystemError(
+                                 M_("Error: /usr is configured to be read-only. You may be running an image-based or "
+                                    "immutable operating system. For more information, refer to your "
+                                    "distribution's documentation."));
++#else
++                            // On non-Linux platforms (e.g. z/OS), read-only /usr is a normal
++                            // filesystem configuration and not indicative of an immutable OS.
++                            // Let the transaction proceed; RPM will report errors if it
++                            // cannot write to specific paths.
++#endif
+                         }
+                     }
+                 }
