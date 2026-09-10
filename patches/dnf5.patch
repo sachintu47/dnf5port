@@ -23,10 +23,73 @@ index 7e0a568..42a104c 100644
                  throw libdnf5::cli::AbortedByUserError();
              }
 diff --git a/dnf5/main.cpp b/dnf5/main.cpp
-index f87d583..f846aa0 100644
+index f87d583..4c302d7 100644
 --- a/dnf5/main.cpp
 +++ b/dnf5/main.cpp
-@@ -1603,10 +1603,17 @@ int main(int argc, char * argv[]) try {
+@@ -193,26 +193,6 @@ void RootCommand::set_argument_parser() {
+     auto refresh = parser.add_new_named_arg("refresh");
+     refresh->set_long_name("refresh");
+     refresh->set_description(_("Force refreshing metadata before running the command."));
+-    refresh->set_parse_hook_func([&ctx](
+-                                     [[maybe_unused]] ArgumentParser::NamedArg * arg,
+-                                     [[maybe_unused]] const char * option,
+-                                     [[maybe_unused]] const char * value) {
+-        std::filesystem::path cachedir{ctx.get_base().get_config().get_cachedir_option().get_value()};
+-        std::error_code ec;
+-        for (const auto & dir_entry : std::filesystem::directory_iterator(cachedir, ec)) {
+-            if (!dir_entry.is_directory()) {
+-                continue;
+-            }
+-            libdnf5::repo::RepoCache cache(ctx.get_base().get_weak_ptr(), dir_entry.path());
+-            try {
+-                cache.write_attribute(libdnf5::repo::RepoCache::ATTRIBUTE_EXPIRED);
+-            } catch (const std::exception & ex) {
+-                ctx.print_error(libdnf5::utils::sformat(
+-                    _("Failed to expire repository cache in path \"{0}\": {1}"), dir_entry.path().native(), ex.what()));
+-            }
+-        }
+-        return true;
+-    });
+     global_options_group->register_argument(refresh);
+ 
+     refresh->add_conflict_argument(*cacheonly);
+@@ -1295,6 +1275,24 @@ static bool user_has_privileges(dnf5::Context & context) {
+     return true;
+ }
+ 
++static void expire_repo_cache(dnf5::Context & context) {
++    auto & base = context.get_base();
++    std::filesystem::path cachedir{base.get_config().get_cachedir_option().get_value()};
++    std::error_code ec;
++    for (const auto & dir_entry : std::filesystem::directory_iterator(cachedir, ec)) {
++        if (!dir_entry.is_directory()) {
++            continue;
++        }
++        libdnf5::repo::RepoCache cache(base.get_weak_ptr(), dir_entry.path());
++        try {
++            cache.write_attribute(libdnf5::repo::RepoCache::ATTRIBUTE_EXPIRED);
++        } catch (const std::exception & ex) {
++            context.print_error(libdnf5::utils::sformat(
++                _("Failed to expire repository cache in path \"{0}\": {1}"), dir_entry.path().native(), ex.what()));
++        }
++    }
++}
++
+ int main(int argc, char * argv[]) try {
+     dnf5::install_signal_handlers();
+     dnf5::set_locale();
+@@ -1496,6 +1494,10 @@ int main(int argc, char * argv[]) try {
+ 
+             base.setup();
+ 
++	    if (context.get_argument_parser().get_named_arg("refresh", false).get_parse_count() > 0) {
++                expire_repo_cache(context);
++            }
++
+             auto & coloring = base.get_config().get_color_option().get_value();
+             if (coloring == "always") {
+                 libdnf5::cli::tty::coloring_enable(libdnf5::cli::tty::ColoringEnabled::ALWAYS);
+@@ -1603,10 +1605,17 @@ int main(int argc, char * argv[]) try {
                          }
                          is_bootc_system = libdnf5::utils::bootc::is_bootc_system();
                          if (!*is_bootc_system) {
