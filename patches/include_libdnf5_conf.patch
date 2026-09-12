@@ -1,0 +1,16 @@
+diff --git a/include/libdnf5/conf/const.hpp b/include/libdnf5/conf/const.hpp
+index cc079f1..f3cf782 100644
+--- a/include/libdnf5/conf/const.hpp
++++ b/include/libdnf5/conf/const.hpp
+@@ -45,7 +45,11 @@ constexpr const char * REPOS_OVERRIDE_DIR = "/etc/dnf/repos.override.d";
+ // Filename inherited from config-manager plugin which originally owned this file.
+ constexpr const char * USER_REPOS_OVERRIDE_FILENAME = "99-config_manager.repo";
+ 
++#ifdef __MVS__
++constexpr const char * TRANSACTION_LOCK_FILEPATH = "/var/run/dnf/rpmtransaction.lock";
++#else
+ constexpr const char * TRANSACTION_LOCK_FILEPATH = "/run/dnf/rpmtransaction.lock";
++#endif
+ constexpr const char * SYSTEM_REPO_LOCK_FILENAME = "system-repo.lock";
+ 
+ // More important varsdirs must be on the end of vector
